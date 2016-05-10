@@ -34,9 +34,13 @@ public:
 
 	bool Collision(Object hit)
 	{
-		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
+		/*if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
 		{
 			return true; 
+		}*/
+		if ((abs(body.getPosition().x - hit.body.getPosition().x) * 2 < (body.getSize().x + hit.body.getSize().x) && (abs(body.getPosition().y - hit.body.getPosition().y) * 2 < (body.getSize().y + hit.body.getSize().y)))) {
+
+			return true;
 		}
 		return false;
 	}
@@ -153,7 +157,7 @@ int main()
 	walls[71].Set(sf::Vector2f(3150, 2800), sf::Vector2f(500, 50), sf::Color::White);
 
 
-	Player player (sf::Vector2f(50, 50), sf::Vector2f(30, 30), sf::Color::Red);
+	Player player (sf::Vector2f(60, 60), sf::Vector2f(30, 30), sf::Color::Red);
 	sf::View mainView(sf::FloatRect(0, 0, 800, 600));
 
 	//game start
@@ -175,7 +179,6 @@ int main()
 		{
 			if (player.Collision(walls[i]))
 			{
-				
 				player.body.setPosition(lastPos);
 			}
 		}
