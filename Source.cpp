@@ -1,47 +1,38 @@
+//#define SFML_STATIC
 
 #include <iostream>
 #include <SFML/Graphics.hpp>
+#include "AnimatedSprite.h"
 #include <string>
 
-class Object 
+class Object
 {
 public:
-	sf::RectangleShape body; 
+	sf::RectangleShape body;
 	float bottom, right, left, top;
 	sf::String tag;
 
-	Object(/*sf::Vector2f position, sf::Vector2f size, sf::Color color*/)
+	Object()
 	{
-		//body.setPosition(position);
-		//body.setSize(size);
-		//body.setFillColor(color);
+		
 	}
 
-	void Set(sf::Vector2f position, sf::Vector2f size, sf::Color color) 
+	//Sets the object's properties
+	void Set(sf::Vector2f position, sf::Vector2f size, sf::Color color)
 	{
 		body.setPosition(position);
 		body.setSize(size);
 		body.setFillColor(color);
 	}
 
-	void Update()
-	{
-		bottom = body.getPosition().y + body.getSize().y;
-		left = body.getPosition().x; 
-		right = body.getPosition().x + body.getSize().x;
-		top = body.getPosition().y;
-	}
-
+	//Check for collision and return a boolean
 	bool Collision(Object hit)
 	{
-		/*if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
+		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
 		{
-			return true; 
-		}*/
-		if ((abs(body.getPosition().x - hit.body.getPosition().x) * 2 < (body.getSize().x + hit.body.getSize().x) && (abs(body.getPosition().y - hit.body.getPosition().y) * 2 < (body.getSize().y + hit.body.getSize().y)))) {
-
-			return true;
+		return true;
 		}
+		
 		return false;
 	}
 };
@@ -49,25 +40,79 @@ public:
 class Player : public Object
 {
 public:
-	void Tick(float deltaTime, float speed) {
-		Update(); 
+	Animation walking;
+	Animation idle;
+	AnimatedSprite playerAnim;
+	bool isWalking = false;
+
+	//Handle player input and update animation
+	void Tick(sf::Time deltaTime, float deltaFloat, float speed) 
+	{
+		//Check for keyboard input and move the player
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
 		{
-			body.move(-speed * deltaTime, 0);
+			body.move(-speed * deltaFloat, 0);
+			isWalking = true;
 		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+		else 
 		{
-			body.move(speed * deltaTime, 0);
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+			{
+				body.move(speed * deltaFloat, 0);
+				isWalking = true;
+			}
+			else 
+			{
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+				{
+					body.move(0, -speed * deltaFloat);
+					isWalking = true;
+				}
+				else 
+				{
+					if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+					{
+						body.move(0, speed * deltaFloat);
+						isWalking = true;
+					}
+					else 
+					{
+						isWalking = false;
+					}
+				}
+			}
 		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+		//Update animation states
+		if (isWalking)
 		{
-			body.move(0, -speed * deltaTime);
+			playerAnim.setAnimation(walking);
+			playerAnim.play();
 		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+		else
 		{
-			body.move(0, speed * deltaTime);
+			playerAnim.setAnimation(idle);
 		}
+		//Sets animation sprite to player position
+		playerAnim.setPosition(body.getPosition());
 	}
+
+	//Load and set up frames for the animations
+	void LoadAnimation(sf::Texture &walkingTexture, sf::Texture &idleTexture) 
+	{
+		walking.setSpriteSheet(walkingTexture);
+		idle.setSpriteSheet(idleTexture);
+		walking.addFrame(sf::IntRect(1, 0, 5, 8));
+		walking.addFrame(sf::IntRect(9, 0, 5, 8));
+		walking.addFrame(sf::IntRect(17, 0, 5, 8));
+		walking.addFrame(sf::IntRect(25, 0, 5, 8));
+		idle.addFrame(sf::IntRect(1, 0, 5, 8));
+		idle.addFrame(sf::IntRect(9, 0, 5, 8));
+		idle.addFrame(sf::IntRect(17, 0, 5, 8));
+		idle.addFrame(sf::IntRect(25, 0, 5, 8));
+		playerAnim.setScale(6.25, 4);
+	}
+
+	//The player constructor
 	Player(sf::Vector2f position, sf::Vector2f size, sf::Color color) /*: Object(position, size, color)*/
 	{
 		body.setPosition(position);
@@ -83,7 +128,10 @@ int main()
 	//game setup
 	sf::RenderWindow window(sf::VideoMode(800, 600), "My window");
 	sf::Clock deltaClock;
+
+	//Instantiate the walls of the level into an array
 	Object walls[72];
+	//Set up all the walls of the game 
 	walls[0].Set(sf::Vector2f(0, 0), sf::Vector2f(850, 50), sf::Color::White);
 	walls[1].Set(sf::Vector2f(0, 50), sf::Vector2f(50, 800), sf::Color::White);
 	walls[2].Set(sf::Vector2f(50, 150), sf::Vector2f(600, 50), sf::Color::White);
@@ -156,11 +204,27 @@ int main()
 	walls[70].Set(sf::Vector2f(3150, 2250), sf::Vector2f(50, 550), sf::Color::White);
 	walls[71].Set(sf::Vector2f(3150, 2800), sf::Vector2f(500, 50), sf::Color::White);
 
+	//Instantiate and set up the player
+	Player player(sf::Vector2f(60, 60), sf::Vector2f(30, 30), sf::Color::Red);
+	
+	//Instantiate and load the spritesheets
+	sf::Texture walkingSpriteSheet;
+	sf::Texture idleSpriteSheet;
+	if (walkingSpriteSheet.loadFromFile("Walking.png")) {
+		std::cout << "loaded";
+	}
+	if (idleSpriteSheet.loadFromFile("Idle.png")) {
+		std::cout << "loaded\n";
+	}
+	//Load sprite sheets into the player
+	player.LoadAnimation(walkingSpriteSheet, idleSpriteSheet);
+	
 
-	Player player (sf::Vector2f(60, 60), sf::Vector2f(30, 30), sf::Color::Red);
+
+	//Instantiate and set up the game camera
 	sf::View mainView(sf::FloatRect(0, 0, 800, 600));
 
-	//game start
+	//Main game loop
 	while (window.isOpen())
 	{
 		sf::Event event;
@@ -169,13 +233,18 @@ int main()
 			if (event.type == sf::Event::Closed)
 				window.close();
 		}
-	    sf::Time timesinceFrame = deltaClock.restart();
-		float deltaTime = timesinceFrame.asSeconds();
 		
+		//Reset clock to get deltaTime
+		sf::Time timesinceFrame = deltaClock.restart();
+		float deltaTime = timesinceFrame.asSeconds();
 
+		//Store the player's last position
 		sf::Vector2f lastPos = player.body.getPosition();
-		player.Tick(deltaTime, 200);
-		for (int i = 0; i < 72; i++) 
+		//Update the player per frame
+		player.Tick(timesinceFrame, deltaTime, 200);
+
+		//Check for collision with all the walls in the game
+		for (int i = 0; i < 72; i++)
 		{
 			if (player.Collision(walls[i]))
 			{
@@ -183,22 +252,26 @@ int main()
 			}
 		}
 		
+
+		//Clear the window
 		window.clear();
+		//Center the camera to the player
 		mainView.setCenter(player.body.getPosition());
+		//Set the windows view
 		window.setView(mainView);
-		window.draw(player.body);
+		//Update the player's animation
+		player.playerAnim.update(timesinceFrame);
+		//Draw the player on the screen
+		window.draw(player.playerAnim);
+		//Draw all the walls to the screen
 		for (int i = 0; i < 72; i++)
 		{
 			window.draw(walls[i].body);
 		}
-		
 
-
-
-
+		//Display the game
 		window.display();
 	}
 
 	return 0;
 }
-
