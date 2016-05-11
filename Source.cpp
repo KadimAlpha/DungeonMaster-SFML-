@@ -5,6 +5,7 @@
 #include "AnimatedSprite.h"
 #include <string>
 
+//The base Object class
 class Object
 {
 public:
@@ -38,18 +39,31 @@ public:
 
 };
 
+//The door class, derived from Object
 class Key : public Object
 {
 public:
 	bool isCollected = false;
 };
 
+//The door class, derived from Object 
 class Door : public Object
 {
 public: 
 	bool isUnlocked = false;
 };
 
+//The enemy class, derived from Object
+class Enemy : public Object
+{
+public:
+	void Move(sf::Vector2f magnitude)
+	{
+		body.move(magnitude);
+	}
+};
+
+//The player class, derived from Object
 class Player : public Object
 {
 public:
@@ -137,6 +151,16 @@ public:
 		return false;
 	}
 
+	bool EnemyCollision(Enemy &hit)
+	{
+		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
+		{
+			return true;
+		}
+
+		return false;
+	}
+
 	//Load and set up frames for the animations
 	void LoadAnimation(sf::Texture &walkingTexture, sf::Texture &idleTexture) 
 	{
@@ -162,29 +186,92 @@ public:
 	}
 };
 
-class Enemy : public Object
-{
-public: 
-	void Move(sf::Vector2f magnitude) 
-	{
-		body.move(magnitude);
-	}
-};
 
+//game setup and initialization
+sf::RenderWindow window(sf::VideoMode(800, 600), "My window");
+sf::Clock deltaClock;
+int gameState = 2;
+sf::Vector2f lastPos;
+sf::Time timesinceFrame;
+float deltaTime;
+
+//Instantiating enemies
+Enemy enemies[4];
+float enemyMagnitudes[4];
+sf::Vector2f enemyLastPos[4];
+
+//Instantiate the walls of the level into an array
+Object walls[72];
+
+//Instantiating the keys
+Key keys[4];
+
+//Instantiating the doors
+Door doors[4];
+
+//Instantiate and set up the player
+Player player(sf::Vector2f(60, 60), sf::Vector2f(30, 30), sf::Color::Red);
+
+//Instantiate the end goal
+Object goal;
+
+void Reset() 
+{
+	//Setting up the end goal
+	goal.Set(sf::Vector2f(2650, 400), sf::Vector2f(50, 200), sf::Color::White);
+
+	//Setting up all the keys
+	keys[0].Set(sf::Vector2f(900, 900), sf::Vector2f(50, 50), sf::Color(255, 192, 0, 255));
+	keys[1].Set(sf::Vector2f(550, 250), sf::Vector2f(50, 50), sf::Color(146, 208, 80, 255));
+	keys[2].Set(sf::Vector2f(300, 2350), sf::Vector2f(50, 50), sf::Color::Red);
+	keys[3].Set(sf::Vector2f(3250, 2500), sf::Vector2f(50, 50), sf::Color::Cyan);
+
+
+
+	//Setting up all the doors
+	doors[0].Set(sf::Vector2f(500, 1050), sf::Vector2f(200, 50), sf::Color(255, 192, 0, 255));
+	doors[1].Set(sf::Vector2f(950, 2450), sf::Vector2f(50, 200), sf::Color(146, 208, 80, 255));
+	doors[2].Set(sf::Vector2f(450, 700), sf::Vector2f(50, 150), sf::Color::Red);
+	doors[3].Set(sf::Vector2f(1000, 400), sf::Vector2f(50, 200), sf::Color::Cyan);
+
+
+	//Setting up all enemies
+	enemies[0].Set(sf::Vector2f(101, 350), sf::Vector2f(50, 50), sf::Color::Red);
+	enemies[1].Set(sf::Vector2f(3350, 2251), sf::Vector2f(50, 50), sf::Color::Red);
+	enemies[2].Set(sf::Vector2f(3450, 2749), sf::Vector2f(50, 50), sf::Color::Red);
+	enemies[3].Set(sf::Vector2f(251, 2400), sf::Vector2f(50, 50), sf::Color::Red);
+
+	//Reset all keys and doors
+	for (int i = 0; i < 4; i++)
+	{
+		keys[i].isCollected = false;
+		doors[i].isUnlocked = false;
+	}
+	//Reset player
+	player.isDead = false;
+	player.body.setPosition(sf::Vector2f(60, 60));
+}
 
 int main()
 {
 
-	//game setup and initialization
-	sf::RenderWindow window(sf::VideoMode(800, 600), "My window");
-	sf::Clock deltaClock;
-	int gameState = 2;
-	sf::Vector2f lastPos;
-	sf::Time timesinceFrame;
-	float deltaTime;
+	
+	//Instantiate and load the spritesheets
+	sf::Texture walkingSpriteSheet;
+	sf::Texture idleSpriteSheet;
+	if (walkingSpriteSheet.loadFromFile("Walking.png")) {
+		std::cout << "loaded";
+	}
+	if (idleSpriteSheet.loadFromFile("Idle.png")) {
+		std::cout << "loaded\n";
+	}
+	//Load sprite sheets into the player
+	player.LoadAnimation(walkingSpriteSheet, idleSpriteSheet);
+	//Instantiate and set up the game camera
+	sf::View mainView(sf::FloatRect(250, 0, 640, 480));
+	sf::Vector2f cameraStartPos = mainView.getCenter();
+	//sf::View mainView(sf::FloatRect(0, 0, 3200, 2400));
 
-	//Instantiate the walls of the level into an array
-	Object walls[72];
 	//Set up all the walls of the game 
 	walls[0].Set(sf::Vector2f(0, 0), sf::Vector2f(850, 50), sf::Color::White);
 	walls[1].Set(sf::Vector2f(0, 50), sf::Vector2f(50, 800), sf::Color::White);
@@ -258,58 +345,48 @@ int main()
 	walls[70].Set(sf::Vector2f(3150, 2250), sf::Vector2f(50, 550), sf::Color::White);
 	walls[71].Set(sf::Vector2f(3150, 2800), sf::Vector2f(500, 50), sf::Color::White);
 
-	//Instantiating the keys
-	Key keys[4];
-	//Setting up all the keys
-	keys[0].Set(sf::Vector2f(900, 900), sf::Vector2f(50, 50), sf::Color(255, 192, 0, 255));
-	keys[1].Set(sf::Vector2f(550, 250), sf::Vector2f(50, 50), sf::Color(146, 208, 80, 255));
-	keys[2].Set(sf::Vector2f(300, 2350), sf::Vector2f(50, 50), sf::Color::Red);
-	keys[3].Set(sf::Vector2f(3250, 2500), sf::Vector2f(50, 50), sf::Color::Cyan);
-
-	//Instantiating the doors
-	Door doors[4];
-	//Setting up all the doors
-	doors[0].Set(sf::Vector2f(500, 1050), sf::Vector2f(200, 50), sf::Color(255, 192, 0, 255));
-	doors[1].Set(sf::Vector2f(950, 2450), sf::Vector2f(50, 200), sf::Color(146, 208, 80, 255));
-	doors[2].Set(sf::Vector2f(450, 700), sf::Vector2f(50, 150), sf::Color::Red);
-	doors[3].Set(sf::Vector2f(1000, 400), sf::Vector2f(50, 200), sf::Color::Cyan);
-
-	//Instantiating enemies
-	Enemy enemies[4];
-	float enemyMagnitudes[4];
-	sf::Vector2f enemyLastPos[4];
-	//Setting up all enemies
-	enemies[0].Set(sf::Vector2f(200, 350), sf::Vector2f(50, 50), sf::Color::Red);
-	enemies[1].Set(sf::Vector2f(3350, 2500), sf::Vector2f(50, 50), sf::Color::Red);
-	enemies[2].Set(sf::Vector2f(3450, 2500), sf::Vector2f(50, 50), sf::Color::Red);
-	enemies[3].Set(sf::Vector2f(400, 2400), sf::Vector2f(50, 50), sf::Color::Red);
 	//Setting up enemy movement speed
 	enemyMagnitudes[0] = 500;
 	enemyMagnitudes[1] = 500;
 	enemyMagnitudes[2] = -500;
 	enemyMagnitudes[3] = 500;
 
-	//Instantiate and set up the player
-	Player player(sf::Vector2f(60, 60), sf::Vector2f(30, 30), sf::Color::Red);
+	Reset();
+
+	//Set up main menu text
+	sf::Text title;
+	sf::Text instructions;
+	sf::Text instructions2;
+	title.setString("Dungeon Master!");
+	instructions.setString("WSAD Keys to move");
+	instructions2.setString("Press ENTER to continue");
+	sf::Font font;
+	font.loadFromFile("Freshman.ttf");
+	title.setFont(font);
+	title.setColor(sf::Color::White);
+	title.setPosition(320, 200);
+	instructions.setFont(font);
+	instructions.setColor(sf::Color::White);
+	instructions.setPosition(320, 240);
+	instructions2.setFont(font);
+	instructions2.setColor(sf::Color::White);
+	instructions2.setPosition(320, 280);
+
+	//Set up Game Over text
+	sf::Text gameOver;
+	gameOver.setString("GAME OVER");
+	gameOver.setPosition(320, 240);
+	gameOver.setColor(sf::Color::White);
+	gameOver.setFont(font);
+
+	//Set up Win text
+	sf::Text win;
+	win.setString("YOU WIN!");
+	win.setPosition(320, 240);
+	win.setColor(sf::Color::White);
+	win.setFont(font);
+
 	
-	//Instantiate and load the spritesheets
-	sf::Texture walkingSpriteSheet;
-	sf::Texture idleSpriteSheet;
-	if (walkingSpriteSheet.loadFromFile("Walking.png")) {
-		std::cout << "loaded";
-	}
-	if (idleSpriteSheet.loadFromFile("Idle.png")) {
-		std::cout << "loaded\n";
-	}
-	//Load sprite sheets into the player
-	player.LoadAnimation(walkingSpriteSheet, idleSpriteSheet);
-	
-
-
-	//Instantiate and set up the game camera
-	//sf::View mainView(sf::FloatRect(0, 0, 640, 480));
-	sf::View mainView(sf::FloatRect(0, 0, 1600, 1200));
-
 	//Main game loop
 	while (window.isOpen())
 	{
@@ -330,13 +407,15 @@ int main()
 
 			//Store the player's last position
 			lastPos = player.body.getPosition();
+
 			//Store the enemies' last positions
 			enemyLastPos[0] = enemies[0].body.getPosition();
 			enemyLastPos[1] = enemies[1].body.getPosition();
 			enemyLastPos[2] = enemies[2].body.getPosition();
 			enemyLastPos[3] = enemies[3].body.getPosition();
+
 			//Update the player per frame
-			player.Tick(timesinceFrame, deltaTime, 200);
+			player.Tick(timesinceFrame, deltaTime, 1000);
 
 			//Check for collision with all the walls in the game
 			for (int i = 0; i < 72; i++)
@@ -347,6 +426,11 @@ int main()
 				}
 			}
 
+			//Check if player has reached the goal
+			if (player.Collision(goal)) 
+			{
+				gameState = 4;
+			}
 			//Check for collision with all the keys in the game
 			for (int i = 0; i < 4; i++)
 			{
@@ -356,7 +440,6 @@ int main()
 					doors[i].isUnlocked = true;
 				}
 			}
-
 			//Check for collision with all the doors in the game
 			for (int i = 0; i < 4; i++)
 			{
@@ -367,6 +450,38 @@ int main()
 						player.body.setPosition(lastPos);
 					}
 				}
+			}
+			//Check for collision with all enemies in the game
+			for (int i = 0; i < 4; i++)
+			{
+				if (player.EnemyCollision(enemies[i])) 
+				{
+					player.Kill();
+				}
+			}
+
+			//Check if enemy is out of bounds and reset it
+			if (enemies[0].body.getPosition().x > 401 || enemies[0].body.getPosition().x < 49)
+			{
+				enemies[0].body.setPosition(101, 350);
+			}
+
+			//Check if enemy is out of bounds and reset it
+			if (enemies[1].body.getPosition().y > 2801 || enemies[1].body.getPosition().y < 2249)
+			{
+				enemies[1].body.setPosition(3350, 2251);
+			}
+
+			//Check if enemy is out of bounds and reset it
+			if (enemies[2].body.getPosition().y > 2801 || enemies[2].body.getPosition().y < 2249)
+			{
+				enemies[2].body.setPosition(3350, 2251);
+			}
+
+			//Check if enemy is out of bounds and reset it
+			if (enemies[3].body.getPosition().x > 701 || enemies[3].body.getPosition().x < 249)
+			{
+				enemies[3].body.setPosition(251, 2400);
 			}
 
 			//Move the enemy
@@ -394,7 +509,6 @@ int main()
 					enemyMagnitudes[1] = enemyMagnitudes[1] * -1;
 				}
 			}
-
 			//Move the enemy
 			enemies[2].Move(sf::Vector2f(0, enemyMagnitudes[2] * deltaTime));
 			//Check the enemy for collisions
@@ -410,6 +524,7 @@ int main()
 
 			//Move the enemy
 			enemies[3].Move(sf::Vector2f(enemyMagnitudes[3] * deltaTime, 0));
+
 			//Check the enemy for collisions
 			for (int i = 0; i < 72; i++)
 			{
@@ -421,16 +536,27 @@ int main()
 				}
 			}
 
+			//Checks if player has died
+			if (player.isDead) 
+			{
+				gameState = 3;
+			}
+
 			//Clear the window
 			window.clear();
+
 			//Center the camera to the player
 			mainView.setCenter(player.body.getPosition());
+
 			//Set the windows view
 			window.setView(mainView);
+
 			//Update the player's animation
 			player.playerAnim.update(timesinceFrame);
+
 			//Draw the player on the screen
 			window.draw(player.playerAnim);
+
 			//Draw all the walls to the screen
 			for (int i = 0; i < 72; i++)
 			{
@@ -457,14 +583,50 @@ int main()
 			{
 				window.draw(enemies[i].body);
 			}
+			
+			//Draw the end goal
+			window.draw(goal.body);
 
 			//Display the game
 			window.display();
 			break;
 		case 2: 
 			window.clear();
+			mainView.setCenter(cameraStartPos);
+			window.setView(mainView);
+			window.draw(title);
+			window.draw(instructions);
+			window.draw(instructions2);
+			
 			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return)) {
+				Reset();
 				gameState = 1;
+			}
+			window.display();
+			break;
+		case 3:
+			window.clear();
+			mainView.setCenter(cameraStartPos);
+			window.setView(mainView);
+			window.draw(gameOver);
+			window.draw(instructions2);
+
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return)) {
+				Reset();
+				gameState = 2;
+			}
+			window.display();
+			break;
+		case 4:
+			window.clear();
+			mainView.setCenter(cameraStartPos);
+			window.setView(mainView);
+			window.draw(win);
+			window.draw(instructions2);
+
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return)) {
+				Reset();
+				gameState = 2;
 			}
 			window.display();
 		}
