@@ -26,7 +26,7 @@ public:
 	}
 
 	//Check for collision and return a boolean
-	bool Collision(Object hit)
+	bool Collision(Object &hit)
 	{
 		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
 		{
@@ -35,6 +35,19 @@ public:
 		
 		return false;
 	}
+
+};
+
+class Key : public Object
+{
+public:
+	bool isCollected = false;
+};
+
+class Door : public Object
+{
+public: 
+	bool isUnlocked = false;
 };
 
 class Player : public Object
@@ -96,6 +109,28 @@ public:
 		playerAnim.setPosition(body.getPosition());
 	}
 
+	//Check for a collision with key objects
+	bool KeyCollision(Key &hit)
+	{
+		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	//Check for a collision with door objects
+	bool DoorCollision(Door &hit)
+	{
+		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
+		{
+			return true;
+		}
+
+		return false;
+	}
+
 	//Load and set up frames for the animations
 	void LoadAnimation(sf::Texture &walkingTexture, sf::Texture &idleTexture) 
 	{
@@ -120,6 +155,7 @@ public:
 		body.setFillColor(color);
 	}
 };
+
 
 
 int main()
@@ -204,6 +240,22 @@ int main()
 	walls[70].Set(sf::Vector2f(3150, 2250), sf::Vector2f(50, 550), sf::Color::White);
 	walls[71].Set(sf::Vector2f(3150, 2800), sf::Vector2f(500, 50), sf::Color::White);
 
+	//Instantiating the keys
+	Key keys[4];
+	//Setting up all the keys
+	keys[0].Set(sf::Vector2f(900, 900), sf::Vector2f(50, 50), sf::Color(255, 192, 0, 255));
+	keys[1].Set(sf::Vector2f(550, 250), sf::Vector2f(50, 50), sf::Color(146, 208, 80, 255));
+	keys[2].Set(sf::Vector2f(300, 2350), sf::Vector2f(50, 50), sf::Color::Red);
+	keys[3].Set(sf::Vector2f(3250, 2500), sf::Vector2f(50, 50), sf::Color::Cyan);
+
+	//Instantiating the doors
+	Door doors[4];
+	//Setting up all the doors;
+	doors[0].Set(sf::Vector2f(500, 1050), sf::Vector2f(200, 50), sf::Color(255, 192, 0, 255));
+	doors[1].Set(sf::Vector2f(950, 2450), sf::Vector2f(50, 200), sf::Color(146, 208, 80, 255));
+	doors[2].Set(sf::Vector2f(450, 700), sf::Vector2f(50, 150), sf::Color::Red);
+	doors[3].Set(sf::Vector2f(1000, 400), sf::Vector2f(50, 200), sf::Color::Cyan);
+
 	//Instantiate and set up the player
 	Player player(sf::Vector2f(60, 60), sf::Vector2f(30, 30), sf::Color::Red);
 	
@@ -222,7 +274,7 @@ int main()
 
 
 	//Instantiate and set up the game camera
-	sf::View mainView(sf::FloatRect(0, 0, 800, 600));
+	sf::View mainView(sf::FloatRect(0, 0, 640, 480));
 
 	//Main game loop
 	while (window.isOpen())
@@ -252,6 +304,27 @@ int main()
 			}
 		}
 		
+		//Check for collision with all the keys in the game
+		for (int i = 0; i < 4; i++)
+		{
+			if (player.KeyCollision(keys[i]))
+			{
+				keys[i].isCollected = true;
+				doors[i].isUnlocked = true;
+			}
+		}
+
+		//Check for collision with all the doors in the game
+		for (int i = 0; i < 4; i++)
+		{
+			if (!doors[i].isUnlocked) 
+			{
+				if (player.DoorCollision(doors[i]))
+				{
+					player.body.setPosition(lastPos);
+				}
+			}
+		}
 
 		//Clear the window
 		window.clear();
@@ -268,7 +341,22 @@ int main()
 		{
 			window.draw(walls[i].body);
 		}
-
+		//Draw all the keys to the screen
+		for (int i = 0; i < 4; i++)
+		{
+			if (!keys[i].isCollected) 
+			{
+				window.draw(keys[i].body);
+			}
+		}
+		//Draw all the doors to the screen
+		for (int i = 0; i < 4; i++)
+		{
+			if (!doors[i].isUnlocked)
+			{
+				window.draw(doors[i].body);
+			}
+		}
 		//Display the game
 		window.display();
 	}
