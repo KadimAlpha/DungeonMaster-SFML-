@@ -57,6 +57,7 @@ public:
 	Animation idle;
 	AnimatedSprite playerAnim;
 	bool isWalking = false;
+	bool isDead = false;
 
 	//Handle player input and update animation
 	void Tick(sf::Time deltaTime, float deltaFloat, float speed) 
@@ -109,6 +110,11 @@ public:
 		playerAnim.setPosition(body.getPosition());
 	}
 
+	//Kills the player 
+	void Kill()
+	{
+		isDead = true;
+	}
 	//Check for a collision with key objects
 	bool KeyCollision(Key &hit)
 	{
@@ -156,14 +162,26 @@ public:
 	}
 };
 
+class Enemy : public Object
+{
+public: 
+	void Move(sf::Vector2f magnitude) 
+	{
+		body.move(magnitude);
+	}
+};
 
 
 int main()
 {
 
-	//game setup
+	//game setup and initialization
 	sf::RenderWindow window(sf::VideoMode(800, 600), "My window");
 	sf::Clock deltaClock;
+	int gameState = 2;
+	sf::Vector2f lastPos;
+	sf::Time timesinceFrame;
+	float deltaTime;
 
 	//Instantiate the walls of the level into an array
 	Object walls[72];
@@ -250,11 +268,26 @@ int main()
 
 	//Instantiating the doors
 	Door doors[4];
-	//Setting up all the doors;
+	//Setting up all the doors
 	doors[0].Set(sf::Vector2f(500, 1050), sf::Vector2f(200, 50), sf::Color(255, 192, 0, 255));
 	doors[1].Set(sf::Vector2f(950, 2450), sf::Vector2f(50, 200), sf::Color(146, 208, 80, 255));
 	doors[2].Set(sf::Vector2f(450, 700), sf::Vector2f(50, 150), sf::Color::Red);
 	doors[3].Set(sf::Vector2f(1000, 400), sf::Vector2f(50, 200), sf::Color::Cyan);
+
+	//Instantiating enemies
+	Enemy enemies[4];
+	float enemyMagnitudes[4];
+	sf::Vector2f enemyLastPos[4];
+	//Setting up all enemies
+	enemies[0].Set(sf::Vector2f(200, 350), sf::Vector2f(50, 50), sf::Color::Red);
+	enemies[1].Set(sf::Vector2f(3350, 2500), sf::Vector2f(50, 50), sf::Color::Red);
+	enemies[2].Set(sf::Vector2f(3450, 2500), sf::Vector2f(50, 50), sf::Color::Red);
+	enemies[3].Set(sf::Vector2f(400, 2400), sf::Vector2f(50, 50), sf::Color::Red);
+	//Setting up enemy movement speed
+	enemyMagnitudes[0] = 500;
+	enemyMagnitudes[1] = 500;
+	enemyMagnitudes[2] = -500;
+	enemyMagnitudes[3] = 500;
 
 	//Instantiate and set up the player
 	Player player(sf::Vector2f(60, 60), sf::Vector2f(30, 30), sf::Color::Red);
@@ -274,7 +307,8 @@ int main()
 
 
 	//Instantiate and set up the game camera
-	sf::View mainView(sf::FloatRect(0, 0, 640, 480));
+	//sf::View mainView(sf::FloatRect(0, 0, 640, 480));
+	sf::View mainView(sf::FloatRect(0, 0, 1600, 1200));
 
 	//Main game loop
 	while (window.isOpen())
@@ -286,79 +320,154 @@ int main()
 				window.close();
 		}
 		
-		//Reset clock to get deltaTime
-		sf::Time timesinceFrame = deltaClock.restart();
-		float deltaTime = timesinceFrame.asSeconds();
-
-		//Store the player's last position
-		sf::Vector2f lastPos = player.body.getPosition();
-		//Update the player per frame
-		player.Tick(timesinceFrame, deltaTime, 200);
-
-		//Check for collision with all the walls in the game
-		for (int i = 0; i < 72; i++)
+		//Switches between screens and levels
+		switch (gameState) 
 		{
-			if (player.Collision(walls[i]))
-			{
-				player.body.setPosition(lastPos);
-			}
-		}
-		
-		//Check for collision with all the keys in the game
-		for (int i = 0; i < 4; i++)
-		{
-			if (player.KeyCollision(keys[i]))
-			{
-				keys[i].isCollected = true;
-				doors[i].isUnlocked = true;
-			}
-		}
+		case 1:
+			//Reset clock to get deltaTime
+			timesinceFrame = deltaClock.restart();
+			deltaTime = timesinceFrame.asSeconds();
 
-		//Check for collision with all the doors in the game
-		for (int i = 0; i < 4; i++)
-		{
-			if (!doors[i].isUnlocked) 
+			//Store the player's last position
+			lastPos = player.body.getPosition();
+			//Store the enemies' last positions
+			enemyLastPos[0] = enemies[0].body.getPosition();
+			enemyLastPos[1] = enemies[1].body.getPosition();
+			enemyLastPos[2] = enemies[2].body.getPosition();
+			enemyLastPos[3] = enemies[3].body.getPosition();
+			//Update the player per frame
+			player.Tick(timesinceFrame, deltaTime, 200);
+
+			//Check for collision with all the walls in the game
+			for (int i = 0; i < 72; i++)
 			{
-				if (player.DoorCollision(doors[i]))
+				if (player.Collision(walls[i]))
 				{
 					player.body.setPosition(lastPos);
 				}
 			}
-		}
 
-		//Clear the window
-		window.clear();
-		//Center the camera to the player
-		mainView.setCenter(player.body.getPosition());
-		//Set the windows view
-		window.setView(mainView);
-		//Update the player's animation
-		player.playerAnim.update(timesinceFrame);
-		//Draw the player on the screen
-		window.draw(player.playerAnim);
-		//Draw all the walls to the screen
-		for (int i = 0; i < 72; i++)
-		{
-			window.draw(walls[i].body);
-		}
-		//Draw all the keys to the screen
-		for (int i = 0; i < 4; i++)
-		{
-			if (!keys[i].isCollected) 
+			//Check for collision with all the keys in the game
+			for (int i = 0; i < 4; i++)
 			{
-				window.draw(keys[i].body);
+				if (player.KeyCollision(keys[i]))
+				{
+					keys[i].isCollected = true;
+					doors[i].isUnlocked = true;
+				}
 			}
-		}
-		//Draw all the doors to the screen
-		for (int i = 0; i < 4; i++)
-		{
-			if (!doors[i].isUnlocked)
+
+			//Check for collision with all the doors in the game
+			for (int i = 0; i < 4; i++)
 			{
-				window.draw(doors[i].body);
+				if (!doors[i].isUnlocked)
+				{
+					if (player.DoorCollision(doors[i]))
+					{
+						player.body.setPosition(lastPos);
+					}
+				}
 			}
+
+			//Move the enemy
+			enemies[0].Move(sf::Vector2f(enemyMagnitudes[0] * deltaTime, 0));
+			//Check the enemy for collisions
+			for (int i = 0; i < 72; i++)
+			{
+				if (enemies[0].Collision(walls[i]))
+				{
+					//Prevent overlaps and inverse the enemy movement direction
+					enemies[0].body.setPosition(enemyLastPos[0]);
+					enemyMagnitudes[0] = enemyMagnitudes[0] * -1;
+				}
+			}
+
+			//Move the enemy
+			enemies[1].Move(sf::Vector2f(0, enemyMagnitudes[1] * deltaTime));
+			//Check the enemy for collisions
+			for (int i = 0; i < 72; i++)
+			{
+				if (enemies[1].Collision(walls[i]))
+				{
+					//Prevent overlaps and inverse the enemy movement direction
+					enemies[1].body.setPosition(enemyLastPos[1]);
+					enemyMagnitudes[1] = enemyMagnitudes[1] * -1;
+				}
+			}
+
+			//Move the enemy
+			enemies[2].Move(sf::Vector2f(0, enemyMagnitudes[2] * deltaTime));
+			//Check the enemy for collisions
+			for (int i = 0; i < 72; i++)
+			{
+				if (enemies[2].Collision(walls[i]))
+				{
+					//Prevent overlaps and inverse the enemy movement direction
+					enemies[2].body.setPosition(enemyLastPos[2]);
+					enemyMagnitudes[2] = enemyMagnitudes[2] * -1;
+				}
+			}
+
+			//Move the enemy
+			enemies[3].Move(sf::Vector2f(enemyMagnitudes[3] * deltaTime, 0));
+			//Check the enemy for collisions
+			for (int i = 0; i < 72; i++)
+			{
+				if (enemies[3].Collision(walls[i]))
+				{
+					//Prevent overlaps and inverse the enemy movement direction
+					enemies[3].body.setPosition(enemyLastPos[3]);
+					enemyMagnitudes[3] = enemyMagnitudes[3] * -1;
+				}
+			}
+
+			//Clear the window
+			window.clear();
+			//Center the camera to the player
+			mainView.setCenter(player.body.getPosition());
+			//Set the windows view
+			window.setView(mainView);
+			//Update the player's animation
+			player.playerAnim.update(timesinceFrame);
+			//Draw the player on the screen
+			window.draw(player.playerAnim);
+			//Draw all the walls to the screen
+			for (int i = 0; i < 72; i++)
+			{
+				window.draw(walls[i].body);
+			}
+			//Draw all the keys to the screen
+			for (int i = 0; i < 4; i++)
+			{
+				if (!keys[i].isCollected)
+				{
+					window.draw(keys[i].body);
+				}
+			}
+			//Draw all the doors to the screen
+			for (int i = 0; i < 4; i++)
+			{
+				if (!doors[i].isUnlocked)
+				{
+					window.draw(doors[i].body);
+				}
+			}
+			//Draw all enemies to the screen
+			for (int i = 0; i < 4; i++)
+			{
+				window.draw(enemies[i].body);
+			}
+
+			//Display the game
+			window.display();
+			break;
+		case 2: 
+			window.clear();
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return)) {
+				gameState = 1;
+			}
+			window.display();
 		}
-		//Display the game
-		window.display();
 	}
 
 	return 0;
