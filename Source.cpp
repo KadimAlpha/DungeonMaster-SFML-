@@ -3,243 +3,8 @@
 #include <iostream>
 #include <SFML/Graphics.hpp>
 #include <string>
-
-//The base Object class
-class Object
-{
-public:
-	sf::RectangleShape body;
-	float bottom, right, left, top;
-	sf::String tag;
-
-	Object()
-	{
-		
-	}
-
-	//Sets the object's properties
-	void Set(sf::Vector2f position, sf::Vector2f size, sf::Color color)
-	{
-		body.setPosition(position);
-		body.setSize(size);
-		body.setFillColor(color);
-	}
-
-	//Check for collision and return a boolean
-	bool Collision(Object &hit)
-	{
-		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
-		{
-		return true;
-		}
-		
-		return false;
-	}
-
-};
-
-class GHAnimatedSprite// : public sf::Sprite
-{
-
-public:
-	//Things we need to store
-	sf::Sprite sprite;
-	int currentFrame;
-	float timeSinceLastChange;
-
-
-	//constructor
-	GHAnimatedSprite(/*sf::Texture & myTexture*/);
-	void Update(float timeSinceLastFrame);
-
-
-};
-
-GHAnimatedSprite::GHAnimatedSprite(/*sf::Texture & myTexture*/) {
-	currentFrame = 0;
-	timeSinceLastChange = 0.0f;
-
-	//sprite.setTexture(myTexture);
-	sprite.setTextureRect(sf::IntRect(8 * currentFrame, 0, 8, 8));
-
-
-}
-
-void GHAnimatedSprite::Update(float timeSinceLastFrame) {
-
-	timeSinceLastChange += timeSinceLastFrame;
-	if (timeSinceLastChange >= 0.25f) {
-
-		std::cout << "timer hits 0.25 seconds\n";
-		timeSinceLastChange = 0.0f; //reset the timer
-
-									//increment the frame counter
-		if (currentFrame >= 3) {
-			currentFrame = 0;
-		}
-		else {
-			currentFrame++;
-		}
-
-		//change the section of the texture
-		sprite.setTextureRect(sf::IntRect(8 * currentFrame, 0, 8, 8));
-	}
-}
-
-//The door class, derived from Object
-class Key : public Object
-{
-public:
-	sf::Sprite sprite;
-	bool isCollected = false;
-	void UpdateSprite() 
-	{
-		sprite.setPosition(body.getPosition());
-		sprite.setScale(6.25, 6.25);
-	}
-};
-
-//The door class, derived from Object 
-class Door : public Object
-{
-public: 
-	bool isUnlocked = false;
-};
-
-//The enemy class, derived from Object
-class Enemy : public Object
-{
-public:
-	sf::Sprite sprite;
-	void UpdateSprite()
-	{
-		sprite.setPosition(body.getPosition());
-		sprite.setScale(6.25, 6.25);
-	}
-	void Move(sf::Vector2f magnitude)
-	{
-		body.move(magnitude);
-		UpdateSprite();
-	}
-	
-};
-
-//The trap class, derived from Object
-
-class Trap : public Object
-{
-public:
-	GHAnimatedSprite fireAnim;
-	bool isActive = true;
-};
-
-//The player class, derived from Object
-class Player : public Object
-{
-public:
-	GHAnimatedSprite playerAnim;
-	bool isWalking = false;
-	bool isDead = false;
-
-	//Handle player input and update animation
-	void Tick(sf::Time deltaTime, float deltaFloat, float speed) 
-	{
-		//Check for keyboard input and move the player
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-		{
-			body.move(-speed * deltaFloat, 0);
-			isWalking = true;
-		}
-		else 
-		{
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-			{
-				body.move(speed * deltaFloat, 0);
-				isWalking = true;
-			}
-			else 
-			{
-				if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
-				{
-					body.move(0, -speed * deltaFloat);
-					isWalking = true;
-				}
-				else 
-				{
-					if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-					{
-						body.move(0, speed * deltaFloat);
-						isWalking = true;
-					}
-					else 
-					{
-						isWalking = false;
-					}
-				}
-			}
-		}
-		playerAnim.sprite.setPosition(body.getPosition());
-	}
-
-	//Kills the player 
-	void Kill()
-	{
-		isDead = true;
-	}
-
-	//Check for a collision with key objects
-	bool TrapCollision(Trap &hit)
-	{
-		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
-		{
-			return true;
-		}
-
-		return false;
-	}
-
-	//Check for a collision with key objects
-	bool KeyCollision(Key &hit)
-	{
-		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
-		{
-			return true;
-		}
-
-		return false;
-	}
-
-	//Check for a collision with door objects
-	bool DoorCollision(Door &hit)
-	{
-		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
-		{
-			return true;
-		}
-
-		return false;
-	}
-
-	//Check for a collision with enemies
-	bool EnemyCollision(Enemy &hit)
-	{
-		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
-		{
-			return true;
-		}
-
-		return false;
-	}
-
-
-	//The player constructor
-	Player(sf::Vector2f position, sf::Vector2f size, sf::Color color) /*: Object(position, size, color)*/
-	{
-		body.setPosition(position);
-		body.setSize(size);
-		body.setFillColor(color);
-	}
-};
+#include "GHAnimatedSprite.h"
+#include "KadimClasses.h"
 
 
 
@@ -775,6 +540,7 @@ int main()
 			window.display();
 			break;
 		case 2: 
+			//The Main Menu screen
 			window.clear();
 			mainView.setCenter(cameraStartPos);
 			window.setView(mainView);
@@ -782,6 +548,8 @@ int main()
 			window.draw(instructions);
 			window.draw(instructions2);
 			
+			//Reset and restart game
+			//Switch screen
 			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return)) {
 				Reset();
 				gameState = 1;
@@ -789,12 +557,15 @@ int main()
 			window.display();
 			break;
 		case 3:
+			//Game Over screen
 			window.clear();
 			mainView.setCenter(cameraStartPos);
 			window.setView(mainView);
 			window.draw(gameOver);
 			window.draw(instructions2);
 
+			//Reset and restart game
+			//Switch screen
 			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return)) {
 				Reset();
 				gameState = 2;
@@ -802,12 +573,15 @@ int main()
 			window.display();
 			break;
 		case 4:
+			//Win screen
 			window.clear();
 			mainView.setCenter(cameraStartPos);
 			window.setView(mainView);
 			window.draw(win);
 			window.draw(instructions2);
 
+			//Reset and restart game
+			//Switch screen
 			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return)) {
 				Reset();
 				gameState = 2;
