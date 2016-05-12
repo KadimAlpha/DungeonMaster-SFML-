@@ -60,7 +60,7 @@ GHAnimatedSprite::GHAnimatedSprite(/*sf::Texture & myTexture*/) {
 	timeSinceLastChange = 0.0f;
 
 	//sprite.setTexture(myTexture);
-	sprite.setTextureRect(sf::IntRect(64 * currentFrame, 0, 64, 64));
+	sprite.setTextureRect(sf::IntRect(8 * currentFrame, 0, 8, 8));
 
 
 }
@@ -124,6 +124,15 @@ public:
 	
 };
 
+//The trap class, derived from Object
+
+class Trap : public Object
+{
+public:
+	GHAnimatedSprite fireAnim;
+	bool isActive = true;
+};
+
 //The player class, derived from Object
 class Player : public Object
 {
@@ -177,6 +186,18 @@ public:
 	{
 		isDead = true;
 	}
+
+	//Check for a collision with key objects
+	bool TrapCollision(Trap &hit)
+	{
+		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
+		{
+			return true;
+		}
+
+		return false;
+	}
+
 	//Check for a collision with key objects
 	bool KeyCollision(Key &hit)
 	{
@@ -235,6 +256,10 @@ Enemy enemies[4];
 float enemyMagnitudes[4];
 sf::Vector2f enemyLastPos[4];
 
+//Instantiating traps
+Trap fire[3];
+Object trapTrigger;
+
 //Instantiate the walls of the level into an array
 Object walls[72];
 
@@ -265,8 +290,6 @@ void Reset()
 		keys[i].UpdateSprite();
 	}
 
-
-
 	//Setting up all the doors
 	doors[0].Set(sf::Vector2f(500, 1050), sf::Vector2f(200, 50), sf::Color(255, 192, 0, 255));
 	doors[1].Set(sf::Vector2f(950, 2450), sf::Vector2f(50, 200), sf::Color(146, 208, 80, 255));
@@ -279,6 +302,10 @@ void Reset()
 	enemies[1].Set(sf::Vector2f(3350, 2251), sf::Vector2f(50, 50), sf::Color::Red);
 	enemies[2].Set(sf::Vector2f(3450, 2749), sf::Vector2f(50, 50), sf::Color::Red);
 	enemies[3].Set(sf::Vector2f(251, 2400), sf::Vector2f(50, 50), sf::Color::Red);
+
+	//Setting up trap
+	trapTrigger.Set(sf::Vector2f(1650, 2350), sf::Vector2f(50, 50), sf::Color(20,20,20,255));
+
 	for (int i = 0; i < 4; i++)
 	{
 		enemies[i].UpdateSprite();
@@ -329,7 +356,7 @@ int main()
 		std::cout << "loaded\n";
 	}
 	if (fireSpriteSheet.loadFromFile("Fire.png")) {
-		std::cout << "loaded\n";
+		std::cout << "loaded fire\n";
 	}
 
 	//Load sprite sheets into the player
@@ -347,6 +374,21 @@ int main()
 	{
 		enemies[i].sprite.setTexture(enemySprite);
 	}
+
+	//Setting up all traps
+	fire[0].Set(sf::Vector2f(1600, 2300), sf::Vector2f(50, 50), sf::Color::Red);
+	fire[1].Set(sf::Vector2f(1650, 2300), sf::Vector2f(50, 50), sf::Color::Red);
+	fire[2].Set(sf::Vector2f(1700, 2300), sf::Vector2f(50, 50), sf::Color::Red);
+
+	//Load sprites into the traps
+	for (int i = 0; i < 4; i++)
+	{
+		fire[i].fireAnim.sprite.setTexture(fireSpriteSheet);
+		fire[i].fireAnim.sprite.setPosition(fire[i].body.getPosition());
+		fire[i].fireAnim.sprite.setScale(6.25, 6.25);
+	}
+	
+
 
 	//Instantiate and set up the game camera
 	sf::View mainView(sf::FloatRect(250, 0, 640, 480));
@@ -545,6 +587,31 @@ int main()
 				}
 			}
 
+			//Check for collision with trap trigger
+			if (player.Collision(trapTrigger))
+			{
+				for (int i = 0; i < 3; i++)
+				{
+					fire[i].isActive = true;
+				}
+			}
+			else
+			{
+				for (int i = 0; i < 3; i++)
+				{
+					fire[i].isActive = false;
+				}
+			}
+
+			//Check for collision with all fire in the game
+			for (int i = 0; i < 3; i++)
+			{
+				if (player.TrapCollision(fire[i]))
+				{
+					player.Kill();
+				}
+			}
+
 			//Check if enemy is out of bounds and reset it
 			if (enemies[0].body.getPosition().x > 401 || enemies[0].body.getPosition().x < 49)
 			{
@@ -656,6 +723,12 @@ int main()
 				player.playerAnim.sprite.setTexture(idleSpriteSheet);
 			}
 
+			//Update the trap animation 
+			for (int i = 0; i < 3; i++)
+			{
+				fire[i].fireAnim.Update(deltaTime);
+			}
+
 			//Draw the player on the screen
 			window.draw(player.playerAnim.sprite);
 
@@ -684,6 +757,15 @@ int main()
 			for (int i = 0; i < 4; i++)
 			{
 				window.draw(enemies[i].sprite);
+			}
+
+			//Draws all traps to the screen
+			for (int i = 0; i < 4; i++)
+			{
+				if (fire[i].isActive) 
+				{
+					window.draw(fire[i].fireAnim.sprite);
+				}
 			}
 			
 			//Draw the end goal
