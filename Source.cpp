@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <SFML/Graphics.hpp>
-#include "AnimatedSprite.h"
 #include <string>
 
 //The base Object class
@@ -39,11 +38,65 @@ public:
 
 };
 
+class GHAnimatedSprite// : public sf::Sprite
+{
+
+public:
+	//Things we need to store
+	sf::Sprite sprite;
+	int currentFrame;
+	float timeSinceLastChange;
+
+
+	//constructor
+	GHAnimatedSprite(/*sf::Texture & myTexture*/);
+	void Update(float timeSinceLastFrame);
+
+
+};
+
+GHAnimatedSprite::GHAnimatedSprite(/*sf::Texture & myTexture*/) {
+	currentFrame = 0;
+	timeSinceLastChange = 0.0f;
+
+	//sprite.setTexture(myTexture);
+	sprite.setTextureRect(sf::IntRect(64 * currentFrame, 0, 64, 64));
+
+
+}
+
+void GHAnimatedSprite::Update(float timeSinceLastFrame) {
+
+	timeSinceLastChange += timeSinceLastFrame;
+	if (timeSinceLastChange >= 0.25f) {
+
+		std::cout << "timer hits 0.25 seconds\n";
+		timeSinceLastChange = 0.0f; //reset the timer
+
+									//increment the frame counter
+		if (currentFrame >= 3) {
+			currentFrame = 0;
+		}
+		else {
+			currentFrame++;
+		}
+
+		//change the section of the texture
+		sprite.setTextureRect(sf::IntRect(8 * currentFrame, 0, 8, 8));
+	}
+}
+
 //The door class, derived from Object
 class Key : public Object
 {
 public:
+	sf::Sprite sprite;
 	bool isCollected = false;
+	void UpdateSprite() 
+	{
+		sprite.setPosition(body.getPosition());
+		sprite.setScale(6.25, 6.25);
+	}
 };
 
 //The door class, derived from Object 
@@ -57,19 +110,25 @@ public:
 class Enemy : public Object
 {
 public:
+	sf::Sprite sprite;
+	void UpdateSprite()
+	{
+		sprite.setPosition(body.getPosition());
+		sprite.setScale(6.25, 6.25);
+	}
 	void Move(sf::Vector2f magnitude)
 	{
 		body.move(magnitude);
+		UpdateSprite();
 	}
+	
 };
 
 //The player class, derived from Object
 class Player : public Object
 {
 public:
-	Animation walking;
-	Animation idle;
-	AnimatedSprite playerAnim;
+	GHAnimatedSprite playerAnim;
 	bool isWalking = false;
 	bool isDead = false;
 
@@ -110,18 +169,7 @@ public:
 				}
 			}
 		}
-		//Update animation states
-		if (isWalking)
-		{
-			playerAnim.setAnimation(walking);
-			playerAnim.play();
-		}
-		else
-		{
-			playerAnim.setAnimation(idle);
-		}
-		//Sets animation sprite to player position
-		playerAnim.setPosition(body.getPosition());
+		playerAnim.sprite.setPosition(body.getPosition());
 	}
 
 	//Kills the player 
@@ -151,6 +199,7 @@ public:
 		return false;
 	}
 
+	//Check for a collision with enemies
 	bool EnemyCollision(Enemy &hit)
 	{
 		if (hit.body.getGlobalBounds().intersects(body.getGlobalBounds()))
@@ -161,21 +210,6 @@ public:
 		return false;
 	}
 
-	//Load and set up frames for the animations
-	void LoadAnimation(sf::Texture &walkingTexture, sf::Texture &idleTexture) 
-	{
-		walking.setSpriteSheet(walkingTexture);
-		idle.setSpriteSheet(idleTexture);
-		walking.addFrame(sf::IntRect(1, 0, 5, 8));
-		walking.addFrame(sf::IntRect(9, 0, 5, 8));
-		walking.addFrame(sf::IntRect(17, 0, 5, 8));
-		walking.addFrame(sf::IntRect(25, 0, 5, 8));
-		idle.addFrame(sf::IntRect(1, 0, 5, 8));
-		idle.addFrame(sf::IntRect(9, 0, 5, 8));
-		idle.addFrame(sf::IntRect(17, 0, 5, 8));
-		idle.addFrame(sf::IntRect(25, 0, 5, 8));
-		playerAnim.setScale(6.25, 4);
-	}
 
 	//The player constructor
 	Player(sf::Vector2f position, sf::Vector2f size, sf::Color color) /*: Object(position, size, color)*/
@@ -187,8 +221,9 @@ public:
 };
 
 
+
 //game setup and initialization
-sf::RenderWindow window(sf::VideoMode(800, 600), "My window");
+sf::RenderWindow window(sf::VideoMode(1600, 1200), "My window");
 sf::Clock deltaClock;
 int gameState = 2;
 sf::Vector2f lastPos;
@@ -215,7 +250,7 @@ Player player(sf::Vector2f(60, 60), sf::Vector2f(30, 30), sf::Color::Red);
 //Instantiate the end goal
 Object goal;
 
-void Reset() 
+void Reset()
 {
 	//Setting up the end goal
 	goal.Set(sf::Vector2f(2650, 400), sf::Vector2f(50, 200), sf::Color::White);
@@ -225,6 +260,10 @@ void Reset()
 	keys[1].Set(sf::Vector2f(550, 250), sf::Vector2f(50, 50), sf::Color(146, 208, 80, 255));
 	keys[2].Set(sf::Vector2f(300, 2350), sf::Vector2f(50, 50), sf::Color::Red);
 	keys[3].Set(sf::Vector2f(3250, 2500), sf::Vector2f(50, 50), sf::Color::Cyan);
+	for (int i = 0; i < 4; i++)
+	{
+		keys[i].UpdateSprite();
+	}
 
 
 
@@ -240,6 +279,10 @@ void Reset()
 	enemies[1].Set(sf::Vector2f(3350, 2251), sf::Vector2f(50, 50), sf::Color::Red);
 	enemies[2].Set(sf::Vector2f(3450, 2749), sf::Vector2f(50, 50), sf::Color::Red);
 	enemies[3].Set(sf::Vector2f(251, 2400), sf::Vector2f(50, 50), sf::Color::Red);
+	for (int i = 0; i < 4; i++)
+	{
+		enemies[i].UpdateSprite();
+	}
 
 	//Reset all keys and doors
 	for (int i = 0; i < 4; i++)
@@ -254,19 +297,57 @@ void Reset()
 
 int main()
 {
-
 	
-	//Instantiate and load the spritesheets
+	//Instantiate and load all textures and spritesheets
 	sf::Texture walkingSpriteSheet;
 	sf::Texture idleSpriteSheet;
-	if (walkingSpriteSheet.loadFromFile("Walking.png")) {
-		std::cout << "loaded";
-	}
-	if (idleSpriteSheet.loadFromFile("Idle.png")) {
+	sf::Texture redKey;
+	sf::Texture blueKey;
+	sf::Texture yellowKey;
+	sf::Texture greenKey;
+	sf::Texture enemySprite;
+	sf::Texture fireSpriteSheet;
+	if (walkingSpriteSheet.loadFromFile("PlayerWalking.png")) {
 		std::cout << "loaded\n";
 	}
+	if (idleSpriteSheet.loadFromFile("PlayerIdle.png")) {
+		std::cout << "loaded\n";
+	}
+	if (redKey.loadFromFile("RedKey.png")) {
+		std::cout << "loaded\n";
+	}
+	if (greenKey.loadFromFile("GreenKey.png")) {
+		std::cout << "loaded\n";
+	}
+	if (blueKey.loadFromFile("BlueKey.png")) {
+		std::cout << "loaded\n";
+	}
+	if (yellowKey.loadFromFile("YellowKey.png")) {
+		std::cout << "loaded\n";
+	}
+	if (enemySprite.loadFromFile("Enemy.png")) {
+		std::cout << "loaded\n";
+	}
+	if (fireSpriteSheet.loadFromFile("Fire.png")) {
+		std::cout << "loaded\n";
+	}
+
 	//Load sprite sheets into the player
-	player.LoadAnimation(walkingSpriteSheet, idleSpriteSheet);
+	player.playerAnim.sprite.setTexture(walkingSpriteSheet);
+	player.playerAnim.sprite.setScale(3.75, 3.75);
+
+	//Load sprites into the keys
+	keys[0].sprite.setTexture(yellowKey);
+	keys[1].sprite.setTexture(greenKey);
+	keys[2].sprite.setTexture(redKey);
+	keys[3].sprite.setTexture(blueKey);
+
+	//Load sprites into enemies
+	for (int i = 0; i < 4; i++)
+	{
+		enemies[i].sprite.setTexture(enemySprite);
+	}
+
 	//Instantiate and set up the game camera
 	sf::View mainView(sf::FloatRect(250, 0, 640, 480));
 	sf::Vector2f cameraStartPos = mainView.getCenter();
@@ -351,6 +432,7 @@ int main()
 	enemyMagnitudes[2] = -500;
 	enemyMagnitudes[3] = 500;
 
+	//Reset the game 
 	Reset();
 
 	//Set up main menu text
@@ -415,7 +497,7 @@ int main()
 			enemyLastPos[3] = enemies[3].body.getPosition();
 
 			//Update the player per frame
-			player.Tick(timesinceFrame, deltaTime, 1000);
+			player.Tick(timesinceFrame, deltaTime, 200);
 
 			//Check for collision with all the walls in the game
 			for (int i = 0; i < 72; i++)
@@ -437,7 +519,6 @@ int main()
 				if (player.KeyCollision(keys[i]))
 				{
 					keys[i].isCollected = true;
-					doors[i].isUnlocked = true;
 				}
 			}
 			//Check for collision with all the doors in the game
@@ -448,6 +529,10 @@ int main()
 					if (player.DoorCollision(doors[i]))
 					{
 						player.body.setPosition(lastPos);
+						if (keys[i].isCollected)
+						{
+							doors[i].isUnlocked = true;
+						}
 					}
 				}
 			}
@@ -475,7 +560,7 @@ int main()
 			//Check if enemy is out of bounds and reset it
 			if (enemies[2].body.getPosition().y > 2801 || enemies[2].body.getPosition().y < 2249)
 			{
-				enemies[2].body.setPosition(3350, 2251);
+				enemies[2].body.setPosition(3450, 2251);
 			}
 
 			//Check if enemy is out of bounds and reset it
@@ -499,6 +584,7 @@ int main()
 
 			//Move the enemy
 			enemies[1].Move(sf::Vector2f(0, enemyMagnitudes[1] * deltaTime));
+
 			//Check the enemy for collisions
 			for (int i = 0; i < 72; i++)
 			{
@@ -509,8 +595,10 @@ int main()
 					enemyMagnitudes[1] = enemyMagnitudes[1] * -1;
 				}
 			}
+
 			//Move the enemy
 			enemies[2].Move(sf::Vector2f(0, enemyMagnitudes[2] * deltaTime));
+
 			//Check the enemy for collisions
 			for (int i = 0; i < 72; i++)
 			{
@@ -536,6 +624,12 @@ int main()
 				}
 			}
 
+			//Update Enemy Sprites
+			for (int i = 0; i < 4; i++)
+			{
+				enemies[i].UpdateSprite();
+			}
+
 			//Checks if player has died
 			if (player.isDead) 
 			{
@@ -552,10 +646,18 @@ int main()
 			window.setView(mainView);
 
 			//Update the player's animation
-			player.playerAnim.update(timesinceFrame);
+			player.playerAnim.Update(deltaTime);
+			if (player.isWalking) 
+			{
+				player.playerAnim.sprite.setTexture(walkingSpriteSheet);
+			}
+			else 
+			{
+				player.playerAnim.sprite.setTexture(idleSpriteSheet);
+			}
 
 			//Draw the player on the screen
-			window.draw(player.playerAnim);
+			window.draw(player.playerAnim.sprite);
 
 			//Draw all the walls to the screen
 			for (int i = 0; i < 72; i++)
@@ -567,7 +669,7 @@ int main()
 			{
 				if (!keys[i].isCollected)
 				{
-					window.draw(keys[i].body);
+					window.draw(keys[i].sprite);
 				}
 			}
 			//Draw all the doors to the screen
@@ -581,7 +683,7 @@ int main()
 			//Draw all enemies to the screen
 			for (int i = 0; i < 4; i++)
 			{
-				window.draw(enemies[i].body);
+				window.draw(enemies[i].sprite);
 			}
 			
 			//Draw the end goal
@@ -634,3 +736,5 @@ int main()
 
 	return 0;
 }
+
+
